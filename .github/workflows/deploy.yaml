@@ -1,0 +1,60 @@
+name: Deploy training VM
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [semester-1-advanced]
+    paths:
+      - .github/workflows/deploy.yaml
+      - deploy-trigger.txt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: training-vm-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment access
+        id: access
+        env:
+          SSH_KEY: ${{ secrets.SEM1_DEPLOY_SSH_KEY }}
+          DB_PASSWORD: ${{ secrets.SEM1_POSTGRES_PASSWORD }}
+        run: |
+          if [[ -z "$SSH_KEY" || -z "$DB_PASSWORD" ]]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Deployment skipped: dedicated VM secrets have not been configured."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-go@v5
+        if: steps.access.outputs.ready == 'true'
+        with:
+          go-version-file: go.mod
+      - name: Deploy through run.sh
+        if: steps.access.outputs.ready == 'true'
+        env:
+          SSH_KEY: ${{ secrets.SEM1_DEPLOY_SSH_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.SEM1_POSTGRES_PASSWORD }}
+          DEPLOY_HOST: ${{ vars.SEM1_DEPLOY_HOST }}
+          DEPLOY_USER: ubuntu
+        run: |
+          set -Eeuo pipefail
+          key_file=$(mktemp)
+          trap 'rm -f "$key_file"' EXIT
+          chmod 600 "$key_file"
+          printf '%s\n' "$SSH_KEY" > "$key_file"
+          # The template uses GITHUB_ACTIONS to select local test execution.
+          # Explicitly clear it for this separate, actual deployment job.
+          GITHUB_ACTIONS=false DEPLOY_SSH_KEY="$key_file" ./scripts/run.sh
+          # Run the unchanged advanced-level course checks on the actual VM.
+          ssh -i "$key_file" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+            "ubuntu@$DEPLOY_HOST" 'command -v zip >/dev/null && command -v unzip >/dev/null || { sudo -n apt-get update -qq && sudo -n apt-get install -y zip unzip; }'
+          cat scripts/tests.sh | ssh -i "$key_file" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+            "ubuntu@$DEPLOY_HOST" 'set -eu; check_dir=$(mktemp -d); trap "rm -rf \"$check_dir\"" EXIT; cat > "$check_dir/tests.sh"; cd "$check_dir"; bash tests.sh 2'

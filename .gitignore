@@ -1,0 +1,13 @@
+/bin/
+/.run/
+/.env
+*.pem
+*.key
+/test_data.csv
+/test_data.zip
+/test_data.tar
+/response.zip
+/project_sem
+
+/service.env
+/.db-password
