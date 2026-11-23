@@ -53,3 +53,8 @@ jobs:
           # The template uses GITHUB_ACTIONS to select local test execution.
           # Explicitly clear it for this separate, actual deployment job.
           GITHUB_ACTIONS=false DEPLOY_SSH_KEY="$key_file" ./scripts/run.sh
+          # Run the unchanged advanced-level course checks on the actual VM.
+          ssh -i "$key_file" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+            "ubuntu@$DEPLOY_HOST" 'command -v zip >/dev/null && command -v unzip >/dev/null || { sudo -n apt-get update -qq && sudo -n apt-get install -y zip unzip; }'
+          cat scripts/tests.sh | ssh -i "$key_file" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+            "ubuntu@$DEPLOY_HOST" 'set -eu; check_dir=$(mktemp -d); trap "rm -rf \"$check_dir\"" EXIT; cat > "$check_dir/tests.sh"; cd "$check_dir"; bash tests.sh 2'
