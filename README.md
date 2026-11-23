@@ -133,3 +133,7 @@ bash -n scripts/prepare.sh scripts/run.sh scripts/install-db.sh
 ## Контакт
 
 Светлана Степанова — GitHub `ssstepashka13`.
+
+## Деплой из GitHub Actions
+
+Отдельный `Deploy training VM` запускает тот же `scripts/run.sh` из GitHub runner. Нужны секреты `SEM1_DEPLOY_SSH_KEY`, `SEM1_POSTGRES_PASSWORD` и переменная `SEM1_DEPLOY_HOST`. Пока они не настроены, развёртывание явно пропускается. После настройки запуск можно инициировать изменением `deploy-trigger.txt` в ветке `semester-1-advanced`; после включения workflow в основную ветку также доступен ручной workflow_dispatch. В этом job `GITHUB_ACTIONS=false` включает реальный SSH-деплой вместо локального режима штатных тестов.
