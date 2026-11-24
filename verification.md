@@ -10,7 +10,7 @@
 - После трёх штатных загрузок: 9 строк, 3 категории, сумма 1800.00.
 - Git blob SHA штатного tests.sh: `92f8fdd582ddecba42f96f0e7733e6ec24ecd36f` — совпадает с шаблоном.
 
-Удалённый деплой пока не подтверждён; его необходимо проверить до сдачи. Результат CI приведён ниже.
+Сервис развёрнут на учебной ВМ. Результаты CI и удалённой проверки приведены ниже.
 
 ## CI и удалённая проверка
 
@@ -18,6 +18,16 @@
 https://github.com/ssstepashka13/itmo-devops-sem1-project-template/actions/runs/45179031263
 По журналу исходного tests.sh полностью пройдены уровни 1 и 2. Уровень 3 не реализован и не заявляется: его необязательная проверка ожидаемо отклоняет ответ, а итоговый job проходит по выбранному уровню 2.
 
-Учебная ВМ cse-linux создана. Удалённый SSH-деплой ещё не проверен.
+Учебная ВМ cse-linux: `89.169.130.141`, SSH-пользователь `ubuntu`.
 
-Добавлен отдельный workflow Deploy training VM, который вызывает тот же scripts/run.sh из GitHub runner. Штатные tests.sh и go_check.yaml не изменены. Пока специальные секреты не настроены, deployment job явно пропускает развёртывание. Для запуска требуются SEM1_DEPLOY_SSH_KEY, SEM1_POSTGRES_PASSWORD и переменная SEM1_DEPLOY_HOST.
+Реальный SSH-деплой через `scripts/run.sh` успешно выполнен из GitHub Actions:
+https://github.com/ssstepashka13/itmo-devops-sem1-project-template/actions/runs/45185548518
+
+На ВМ установлен PostgreSQL 16, созданы роль и БД, схема инициализирована. Сервис `sem1-prices.service` включён в автозапуск systemd; `/healthz` успешно проверен после запуска.
+
+В отдельный workflow Deploy training VM добавлен запуск неизменённого `scripts/tests.sh 2` непосредственно на ВМ. Секреты хранятся в GitHub Secrets; приватный ключ и пароль не включены в исходный код. Штатные `tests.sh` и `go_check.yaml` не изменены.
+
+Проверка продвинутого уровня на реальной ВМ завершилась успешно:
+https://github.com/ssstepashka13/itmo-devops-sem1-project-template/actions/runs/45185806237
+
+Исходный tests.sh 2 подтвердил POST ZIP, POST TAR, POST без type, GET с data.csv и SQL-запрос. После проверки в БД: 9 строк, 3 категории, сумма 1800.00.
